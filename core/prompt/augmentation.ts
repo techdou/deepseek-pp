@@ -1,4 +1,5 @@
 import { SYSTEM_TEMPLATE_CHAT, SYSTEM_TEMPLATE_THINKING } from '../constants';
+import { SHELL_TOOL_NAMES } from '../shell/contracts';
 import type { Memory, ToolDescriptor } from '../types';
 import {
   DEFAULT_TOOL_DESCRIPTORS,
@@ -56,9 +57,11 @@ export function buildPromptAugmentation(
 
 export function renderToolSchemas(descriptors: readonly ToolDescriptor[] = DEFAULT_TOOL_DESCRIPTORS): string {
   const catalog = createToolInvocationCatalog(descriptors);
-  return descriptors
+  const shellHint = renderShellMcpHint(descriptors, catalog);
+  const schemas = descriptors
     .map((descriptor) => renderToolSchema(descriptor, catalog))
     .join('\n\n');
+  return [shellHint, schemas].filter(Boolean).join('\n\n');
 }
 
 function renderToolSchema(descriptor: ToolDescriptor, catalog: ToolInvocationCatalog): string {
@@ -78,6 +81,28 @@ function renderToolSchema(descriptor: ToolDescriptor, catalog: ToolInvocationCat
     `Parameters JSON Schema: ${JSON.stringify(descriptor.inputSchema)}`,
   ];
   return lines.filter(Boolean).join('\n');
+}
+
+function renderShellMcpHint(
+  descriptors: readonly ToolDescriptor[],
+  catalog: ToolInvocationCatalog,
+): string {
+  const shellExec = descriptors.find((descriptor) => descriptor.name === 'shell_exec');
+  if (!shellExec) return '';
+
+  const shellStatus = descriptors.find((descriptor) => descriptor.name === 'shell_status');
+  const execName = getPreferredToolInvocationName(shellExec, catalog);
+  const statusName = shellStatus ? getPreferredToolInvocationName(shellStatus, catalog) : null;
+
+  return [
+    '### Shell MCP Capability',
+    'Shell MCP is connected through the extension. You can execute local CLI commands by emitting the executable XML tool tag; do not say you cannot run commands when this tool is listed.',
+    `Use <${execName}> with a JSON body such as {"command":"officecli --version","timeout_ms":60000} to run OfficeCLI or other local CLI tools.`,
+    statusName
+      ? `Use <${statusName}>{}</${statusName}> first when you need host status, shell, PATH, or working-directory context.`
+      : '',
+    `Recognized shell tool names: ${SHELL_TOOL_NAMES.join(', ')}`,
+  ].filter(Boolean).join('\n');
 }
 
 export function renderToolFormatReminder(descriptors: readonly ToolDescriptor[]): string {

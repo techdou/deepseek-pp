@@ -34,6 +34,8 @@
 ### OfficeCLI 文档工具
 
 - **内置 `/officecli` skill** — 面向 `.docx`、`.xlsx`、`.pptx` 的检查、问题定位、验证和受控修改流程
+- **官方 Skill 库** — 内置 OfficeCLI 官方的 DOCX、XLSX、PPTX、Pitch Deck、Academic Paper、Financial Model、Dashboard、Morph PPT 等场景技能
+- **官方样式库** — 内置 OfficeCLI 官方 PPT styles 索引和样式说明，可用 `/officecli-pptx /officecli-styles ...` 链式加载完整视觉风格
 - **通过 Shell MCP 执行** — 侧边栏创建 `Shell` 预设后，模型通过 `shell_exec` 调用本机命令版 OfficeCLI
 - **自动安装命令版** — `shell:install` 会按系统和 CPU 架构从 iOfficeAI/OfficeCLI 官方发布资产安装单二进制
 - **命令版优先** — skill 会先检查 `officecli --help` 是否包含 `view/get/set/batch` 等脚本化命令
@@ -62,7 +64,7 @@ npm run shell:install -- --browser chrome --extension-id <扩展ID>
 
 ### Skill 技能系统
 
-- **内置技能** — 预设 9 个开箱即用的技能：极致深度思考、前端设计、文档协作、品牌指南、算法艺术、PPT 设计等
+- **内置技能** — 预设多组开箱即用的技能，包含通用协作技能和 OfficeCLI 官方文档技能
 - **自定义技能** — 在侧边栏创建专属技能，定义系统指令和参数
 - **`/` 触发** — 在聊天框输入 `/` 弹出自动补全面板，选择技能后自动注入对应的 system prompt
 - **记忆联动** — 技能可选择是否同时注入记忆上下文
@@ -127,6 +129,7 @@ npm run smoke:shell
 
 ## 友情链接
 
+- [OfficeCLI](https://github.com/iOfficeAI/OfficeCLI) — AI-friendly CLI for Office 文档处理
 - [Awesome-Prompts 角色扮演](https://github.com/dongshuyan/Awesome-Prompts/tree/master/%E8%A7%92%E8%89%B2%E6%89%AE%E6%BC%94) — 精选角色扮演 Prompt 合集
 - [LINUX DO](https://linux.do) — 新一代开源技术社区
 

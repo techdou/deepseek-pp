@@ -40,6 +40,7 @@ export default function SkillPage() {
   };
 
   const builtin = skills.filter((s) => s.source === 'builtin');
+  const official = skills.filter((s) => s.source === 'official');
   const custom = skills.filter((s) => s.source === 'custom');
 
   return (
@@ -66,6 +67,7 @@ export default function SkillPage() {
       )}
 
       <SkillSection title="内置" skills={builtin} />
+      <SkillSection title="官方" skills={official} />
       <SkillSection title="自定义" skills={custom} onDelete={handleDelete} />
 
       <div className="ds-info-panel rounded-xl p-3.5">

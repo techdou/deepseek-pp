@@ -238,7 +238,7 @@ function modifyRequestBody(bodyStr: string): RequestBodyModification | null {
   if (!originalPrompt) return null;
 
   const thinkingEnabled = body.thinking_enabled === true;
-  const effectiveToolDescriptors = thinkingEnabled ? [] : hookState.toolDescriptors;
+  const effectiveToolDescriptors = hookState.toolDescriptors;
   const isFirstMessage = body.parent_message_id === null || body.parent_message_id === undefined;
 
   if (isFirstMessage) {
@@ -260,31 +260,18 @@ function modifyRequestBody(bodyStr: string): RequestBodyModification | null {
   if (invocation) {
     const resolved = resolveSkills(invocation.skillName, invocation.args);
     if (resolved) {
-      let prompt = resolved.combinedPrompt;
-      const anyMemoryEnabled = resolved.memoryEnabled;
+      const { augmented, usedMemoryIds } = buildPromptAugmentation(resolved.combinedPrompt, {
+        memories: hookState.memories,
+        thinkingEnabled,
+        identityOnly: !resolved.memoryEnabled,
+        presetContent,
+        toolDescriptors: effectiveToolDescriptors,
+      });
 
-      if (anyMemoryEnabled) {
-        const { augmented } = buildPromptAugmentation(prompt, {
-          memories: hookState.memories,
-          thinkingEnabled,
-          presetContent,
-          toolDescriptors: effectiveToolDescriptors,
-        });
-        prompt = augmented;
-      } else if (hookState.memories.length > 0) {
-        const { augmented } = buildPromptAugmentation(prompt, {
-          memories: hookState.memories,
-          thinkingEnabled,
-          identityOnly: true,
-          presetContent,
-          toolDescriptors: effectiveToolDescriptors,
-        });
-        prompt = augmented;
-      } else if (presetContent) {
-        prompt = `${presetContent}\n\n---\n\n${prompt}`;
+      body.prompt = augmented;
+      if (usedMemoryIds.length > 0) {
+        hookState.onMemoriesUsed(usedMemoryIds);
       }
-
-      body.prompt = prompt;
       return { body: JSON.stringify(body), agentTaskPrompt: resolved.combinedPrompt };
     }
   }

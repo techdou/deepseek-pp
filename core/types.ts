@@ -98,7 +98,7 @@ export interface SyncConfig {
   lastSyncAt: number | null;
 }
 
-export type SkillSource = 'builtin' | 'custom';
+export type SkillSource = 'builtin' | 'official' | 'custom';
 
 export interface Skill {
   name: string;
