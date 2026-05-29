@@ -31,11 +31,6 @@ const DEFAULT_APP_VERSION = '2.0.0';
 const DEEPSEEK_CLIENT_PLATFORM = 'web';
 const USER_TOKEN_STORAGE_KEY = 'userToken';
 const SUPPORTED_MODEL_TYPES = new Set(['DEFAULT', 'default', 'expert', 'vision']);
-const KNOWN_POW_WORKER_URLS = [
-  'https://fe-static.deepseek.com/chat/static/33614.570c5fac7d.js',
-  'https://fe-static.deepseek.com/chat/static/38401.a8c4129551.js',
-];
-const POW_WORKER_TIMEOUT_MS = 15_000;
 const AUTOMATION_MCP_CONTINUATION_LIMIT = 3;
 const BYPASS_HOOK_HEADER = 'X-DPP-Bypass-Hook';
 
@@ -86,8 +81,6 @@ interface HistoryMessage {
   parentId: number | null;
   role: string | null;
 }
-
-let powWorkerUrlsPromise: Promise<string[]> | null = null;
 
 export async function runDeepSeekAutomation(
   request: AutomationRunnerRequest,
@@ -452,84 +445,12 @@ async function createPowChallenge(clientHeaders: Record<string, string>): Promis
 }
 
 async function solvePowChallenge(challenge: PowChallenge): Promise<PowAnswer> {
-  const workerUrls = await getPowWorkerUrls();
-  let lastError: unknown = null;
-
-  for (const workerUrl of workerUrls) {
-    try {
-      return await solvePowWithWorker(workerUrl, challenge);
-    } catch (err) {
-      lastError = err;
-    }
-  }
-
   try {
     return await solvePowChallengeLocally(challenge);
   } catch (err) {
-    const workerMessage = lastError instanceof Error ? lastError.message : String(lastError ?? 'unknown worker error');
     const localMessage = err instanceof Error ? err.message : String(err);
-    throw new DeepSeekPowError(`DeepSeek PoW challenge failed. worker: ${workerMessage}; local: ${localMessage}`);
+    throw new DeepSeekPowError(`DeepSeek PoW challenge failed: ${localMessage}`);
   }
-}
-
-function solvePowWithWorker(workerUrl: string, challenge: PowChallenge): Promise<PowAnswer> {
-  return new Promise((resolve, reject) => {
-    const worker = new Worker(workerUrl);
-    const timeout = window.setTimeout(() => {
-      worker.terminate();
-      reject(new Error('DeepSeek PoW worker timed out.'));
-    }, POW_WORKER_TIMEOUT_MS);
-
-    worker.onmessage = (event) => {
-      if (event.data?.type === 'pow-answer') {
-        window.clearTimeout(timeout);
-        worker.terminate();
-        resolve(event.data.answer as PowAnswer);
-      } else if (event.data?.type === 'pow-error') {
-        window.clearTimeout(timeout);
-        worker.terminate();
-        reject(event.data.error instanceof Error ? event.data.error : new Error(String(event.data.error)));
-      }
-    };
-
-    worker.onerror = (event) => {
-      window.clearTimeout(timeout);
-      worker.terminate();
-      reject(new Error(event.message));
-    };
-
-    worker.postMessage({ type: 'pow-challenge', challenge });
-  });
-}
-
-async function getPowWorkerUrls(): Promise<string[]> {
-  powWorkerUrlsPromise ??= discoverPowWorkerUrls();
-  return powWorkerUrlsPromise;
-}
-
-async function discoverPowWorkerUrls(): Promise<string[]> {
-  const mainScriptUrl = getDeepSeekMainScriptUrl();
-  if (!mainScriptUrl) return KNOWN_POW_WORKER_URLS;
-
-  try {
-    const source = await fetch(mainScriptUrl, { cache: 'force-cache' }).then((response) => response.text());
-    const baseUrl = mainScriptUrl.replace(/static\/main\.[^/]+$/, '');
-    const urls = ['33614', '38401']
-      .map((chunkId) => {
-        const match = source.match(new RegExp(`${chunkId}:"([^"]+)"`));
-        return match ? `${baseUrl}static/${chunkId}.${match[1]}.js` : null;
-      })
-      .filter((url): url is string => url !== null);
-    return urls.length > 0 ? urls : KNOWN_POW_WORKER_URLS;
-  } catch {
-    return KNOWN_POW_WORKER_URLS;
-  }
-}
-
-function getDeepSeekMainScriptUrl(): string | null {
-  const scripts = Array.from(document.scripts);
-  const script = scripts.find((item) => item.src.includes('/chat/static/main.'));
-  return script?.src ?? null;
 }
 
 async function readCompletionStream(response: Response): Promise<StreamSummary> {
